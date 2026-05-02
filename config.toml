@@ -1,0 +1,22 @@
+[model]
+name = "Bell-LaPadula"
+
+[levels]
+order = ["Unclassified", "Confidential", "Secret", "Top Secret"]
+
+[categories]
+sets = ["Nuclear", "Crypto", "Personnel"]
+
+[objects]
+"foo.txt" = { level = "Top Secret", categories = ["Crypto"] }
+"bar.txt" = { level = "Unclassified", categories = [] }
+
+/*
+# [functions]
+# "@read_file" = { effect = "read" }
+# "@write_file" = { effect = "write" }
+
+# [variables]
+# "%secret_buf" = { level = "Top Secret", categories = ["Crypto"] }
+# "%public_buf" = { level = "Unclassified", categories = [] }
+*/
