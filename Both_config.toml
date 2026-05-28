@@ -1,0 +1,110 @@
+[model]
+names = ["Bell-LaPadula", "Biba"]
+
+[confidentiality_levels]
+order = ["Unclassified", "Confidential", "Secret", "Top Secret"]
+
+[integrity_levels]
+order = ["Untrusted", "Low Integrity", "Medium Integrity", "High Integrity", "Trusted"]
+
+[confidentiality_categories]
+sets = ["Nuclear", "Crypto", "Personnel"]
+
+[integrity_categories]
+sets = ["Sensor", "Audit", "Control", "Config"]
+
+[subjects.guest]
+clearance = "Unclassified"
+integrity = "Untrusted"
+confidentiality_categories = []
+integrity_categories = []
+
+[subjects.intern]
+clearance = "Confidential"
+integrity = "Low Integrity"
+confidentiality_categories = ["Personnel"]
+integrity_categories = []
+
+[subjects.analyst]
+clearance = "Secret"
+integrity = "Medium Integrity"
+confidentiality_categories = ["Crypto"]
+integrity_categories = ["Audit"]
+
+[subjects.operator]
+clearance = "Secret"
+integrity = "High Integrity"
+confidentiality_categories = ["Nuclear"]
+integrity_categories = ["Sensor", "Control"]
+
+[subjects.admin]
+clearance = "Top Secret"
+integrity = "Trusted"
+confidentiality_categories = ["Nuclear", "Crypto", "Personnel"]
+integrity_categories = ["Sensor", "Audit", "Control", "Config"]
+
+[objects."public_status.txt"]
+classification = "Unclassified"
+integrity = "Low Integrity"
+confidentiality_categories = []
+integrity_categories = []
+
+[objects."employee_directory.csv"]
+classification = "Confidential"
+integrity = "Medium Integrity"
+confidentiality_categories = ["Personnel"]
+integrity_categories = []
+
+[objects."crypto_keys.txt"]
+classification = "Top Secret"
+integrity = "Trusted"
+confidentiality_categories = ["Crypto"]
+integrity_categories = ["Config"]
+
+[objects."reactor_report.txt"]
+classification = "Secret"
+integrity = "High Integrity"
+confidentiality_categories = ["Nuclear"]
+integrity_categories = ["Sensor"]
+
+[objects."joint_incident_report.txt"]
+classification = "Top Secret"
+integrity = "High Integrity"
+confidentiality_categories = ["Crypto", "Nuclear"]
+integrity_categories = ["Audit"]
+
+[objects."operator_command.log"]
+classification = "Secret"
+integrity = "Medium Integrity"
+confidentiality_categories = []
+integrity_categories = ["Control", "Audit"]
+
+# Optional future analyzer annotations:
+#
+# These are not part of the core combined policy. They would map
+# LLVM/program behavior onto the subjects and objects above.
+#
+# Possible design 1: direct function labels.
+# [functions.SOURCE_CRYPTO_KEYSTORE.returns]
+# classification = "Top Secret"
+# integrity = "Trusted"
+# confidentiality_categories = ["Crypto"]
+# integrity_categories = ["Config"]
+#
+# [functions.SINK_PUBLIC_NETWORK.accepts]
+# classification = "Unclassified"
+# integrity = "Low Integrity"
+# confidentiality_categories = []
+# integrity_categories = []
+#
+# Possible design 2: function-to-object mapping.
+# [functions]
+# "SOURCE_CRYPTO_KEYSTORE" = { reads = "crypto_keys.txt" }
+# "SINK_OPERATOR_LOG" = { writes = "operator_command.log" }
+#
+# Possible design 3: optional seed labels for SSA variables or parameters.
+# [variables."%session_key"]
+# classification = "Top Secret"
+# integrity = "Trusted"
+# confidentiality_categories = ["Crypto"]
+# integrity_categories = ["Config"]

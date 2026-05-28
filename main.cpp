@@ -35,7 +35,11 @@ int run(const char* input, const char* config, bool print_cfg) {
             return 1;
         }
 
-        // TODO: Parse the security policy config and pass it into enforce_BLP.
+        // TODO: Parse the core BLP policy first: levels, categories, subjects, and objects.
+        // Later, decide how LLVM behavior maps onto policy:
+        //   1. direct function labels: SOURCE returns label, SINK accepts label
+        //   2. function-to-object mapping: SOURCE reads object, SINK writes object
+        //   3. optional variable seed labels for external inputs or parameters
     }
 
     std::vector<Function> functions = Function::build_functions(file);
