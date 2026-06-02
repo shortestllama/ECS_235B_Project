@@ -1,7 +1,7 @@
 CXX = g++
 CXXFLAGS = -Wall -g -std=c++17
 TARGET = analyzer
-SRCS = main.cpp CFG.cpp function.cpp basic_block.cpp nodes.cpp
+SRCS = main.cpp CFG.cpp function.cpp basic_block.cpp nodes.cpp security_policy.cpp info_flow.cpp
 OBJS = $(SRCS:.cpp=.o)
 TESTS = $(wildcard test_suite/*.ll)
 
@@ -23,8 +23,8 @@ test: $(TARGET)
 			echo "FAIL (exit $$status)"; \
 			echo "$$output"; \
 			fail=1; \
-		elif printf "%s\n" "$$output" | grep -q "Unrecognized instruction"; then \
-			echo "FAIL (unrecognized instruction)"; \
+		elif printf "%s\n" "$$output" | grep -q "Unsupported LLVM instruction"; then \
+			echo "FAIL (unsupported instruction)"; \
 			echo "$$output"; \
 			fail=1; \
 		else \

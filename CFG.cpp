@@ -14,6 +14,10 @@ CFG CFG::build(const Function& fn) {
     CFG cfg{{}, {}};
     auto current_block = std::make_unique<BasicBlock>(cfg.get_blocks().size(), std::vector<std::unique_ptr<INode>>{}, std::vector<unsigned long>{});
 
+    for (const auto& parameter : fn.get_parameters()) {
+        cfg.add_variable(parameter);
+    }
+
     for (const auto& line : fn.get_body()) {
         bool valid = false;
 
@@ -56,8 +60,22 @@ CFG CFG::build(const Function& fn) {
                 current_block->add_instruction(std::move(*node));
                 valid = true;
             }
+            if (auto node = CastNode::parse(line)) {
+                cfg.add_variable(static_cast<CastNode*>(node->get())->get_dest());
+                current_block->add_instruction(std::move(*node));
+                valid = true;
+            }
+            if (auto node = SelectNode::parse(line)) {
+                cfg.add_variable(static_cast<SelectNode*>(node->get())->get_dest());
+                current_block->add_instruction(std::move(*node));
+                valid = true;
+            }
             if (auto node = BrNode::parse(line)) {
                 current_block->set_term(*static_cast<BrNode*>(node->get()));
+                current_block->add_instruction(std::move(*node));
+                valid = true;
+            }
+            if (auto node = SwitchNode::parse(line)) {
                 current_block->add_instruction(std::move(*node));
                 valid = true;
             }
@@ -81,6 +99,11 @@ CFG CFG::build(const Function& fn) {
                 current_block->add_instruction(std::move(*node));
                 valid = true;
             }
+            if (auto node = BinaryOpNode::parse(line)) {
+                cfg.add_variable(static_cast<BinaryOpNode*>(node->get())->get_dest());
+                current_block->add_instruction(std::move(*node));
+                valid = true;
+            }
             if (auto node = PhiNode::parse(line)) {
                 cfg.add_variable(static_cast<PhiNode*>(node->get())->get_dest());
                 current_block->add_instruction(std::move(*node));
@@ -96,7 +119,7 @@ CFG CFG::build(const Function& fn) {
         }
 
         if (!valid) {
-            std::cerr << "Unrecognized instruction: " << line << std::endl;
+            std::cerr << "Unsupported LLVM instruction: " << line << std::endl;
         }
     }
 
@@ -125,6 +148,20 @@ void CFG::set_successors() {
             if (auto false_label = node->get_false_label(); !false_label.empty()) {
                 if (auto new_id = get_id_by_leader(false_label)) {
                     block.add_successor(*new_id);
+                }
+            }
+        }
+
+        if (!block.get_instructions().empty()) {
+            if (auto node = dynamic_cast<SwitchNode*>(block.get_instructions().back().get())) {
+                if (auto new_id = get_id_by_leader(node->get_default_label())) {
+                    block.add_successor(*new_id);
+                }
+
+                for (const auto& label : node->get_case_labels()) {
+                    if (auto new_id = get_id_by_leader(label)) {
+                        block.add_successor(*new_id);
+                    }
                 }
             }
         }

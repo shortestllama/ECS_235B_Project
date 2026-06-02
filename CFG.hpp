@@ -16,6 +16,7 @@ public:
     void set_successors();
     std::optional<unsigned long> get_id_by_leader(const std::string& label) const;
     const std::vector<BasicBlock>& get_blocks() const { return blocks; }
+    const std::vector<std::string>& get_variables() const { return variables; }
     void print() const;
 private:
     std::vector<BasicBlock> blocks;
