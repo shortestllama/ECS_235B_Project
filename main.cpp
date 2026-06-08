@@ -4,6 +4,7 @@
 
 #include "function.hpp"
 #include "CFG.hpp"
+#include "info_flow.hpp"
 #include "security_policy.hpp"
 
 void print_usage(const char* program) {
@@ -15,12 +16,16 @@ void print_usage(const char* program) {
     std::cerr << "  --print-policy  Print the parsed security policy" << std::endl;
 }
 
-void process_function(const Function& fn, bool print_cfg) {
+void analyze_function(const Function& fn, const SecurityPolicy& policy, bool print_cfg) {
     CFG cfg = CFG::build(fn);
 
     if (print_cfg) {
         cfg.print();
     }
+
+    InfoFlowAnalysis analysis(cfg, policy);
+    analysis.run();
+    analysis.print_report();
 }
 
 int run(const char* input, const char* config, bool print_cfg, bool print_policy) {
@@ -51,7 +56,7 @@ int run(const char* input, const char* config, bool print_cfg, bool print_policy
     std::vector<Function> functions = Function::build_functions(file);
 
     for (const auto& fn : functions) {
-        process_function(fn, print_cfg);
+        analyze_function(fn, policy, print_cfg);
     }
 
     return 0;

@@ -1,7 +1,7 @@
 CXX = g++
 CXXFLAGS = -Wall -g -std=c++17
 TARGET = analyzer
-SRCS = main.cpp CFG.cpp function.cpp basic_block.cpp nodes.cpp security_policy.cpp
+SRCS = main.cpp CFG.cpp function.cpp basic_block.cpp nodes.cpp security_policy.cpp info_flow.cpp
 OBJS = $(SRCS:.cpp=.o)
 TESTS = $(wildcard test_suite/*.ll)
 
