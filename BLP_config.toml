@@ -7,14 +7,10 @@ order = ["Unclassified", "Confidential", "Secret", "Top Secret"]
 [categories]
 sets = ["Nuclear", "Crypto", "Personnel"]
 
-[subjects]
-"guest" = { clearance = "Unclassified", categories = [] }
-"intern" = { clearance = "Confidential", categories = ["Personnel"] }
-"analyst" = { clearance = "Secret", categories = ["Crypto"] }
-"engineer" = { clearance = "Secret", categories = ["Nuclear"] }
-"admin" = { clearance = "Top Secret", categories = ["Crypto", "Nuclear", "Personnel"] }
-
 [objects]
+"stdin" = { level = "Unclassified", categories = [] }
+"stdout" = { level = "Unclassified", categories = [] }
+"public_network" = { level = "Unclassified", categories = [] }
 "public_status.txt" = { level = "Unclassified", categories = [] }
 "employee_directory.csv" = { level = "Confidential", categories = ["Personnel"] }
 "crypto_keys.txt" = { level = "Top Secret", categories = ["Crypto"] }
@@ -22,21 +18,46 @@ sets = ["Nuclear", "Crypto", "Personnel"]
 "joint_incident_report.txt" = { level = "Top Secret", categories = ["Crypto", "Nuclear"] }
 "admin_audit.log" = { level = "Secret", categories = ["Personnel"] }
 
-# Optional future analyzer annotations:
-#
-# These are not part of the core Bell-LaPadula policy. They would map
-# LLVM/program behavior onto the subjects and objects above.
-#
-# Possible design 1: direct function labels.
-# [functions]
-# "SOURCE_CRYPTO_KEYSTORE" = { returns = { level = "Top Secret", categories = ["Crypto"] } }
-# "SINK_PUBLIC_NETWORK" = { accepts = { level = "Unclassified", categories = [] } }
-#
-# Possible design 2: function-to-object mapping.
-# [functions]
-# "SOURCE_CRYPTO_KEYSTORE" = { reads = "crypto_keys.txt" }
-# "SINK_PUBLIC_NETWORK" = { writes = "public_network" }
-#
-# Possible design 3: optional seed labels for SSA variables or parameters.
-# [variables]
-# "%session_key" = { level = "Top Secret", categories = ["Crypto"] }
+[effects.SOURCE]
+reads = "crypto_keys.txt"
+returns = true
+
+[effects.SINK]
+writes = "public_network"
+reads_from_args = [0]
+
+[effects.scanf]
+reads = "stdin"
+writes_to_args = [1]
+
+[effects.printf]
+writes = "stdout"
+reads_from_args = [1, 2]
+
+[effects.SOURCE_PUBLIC_NETWORK]
+reads = "public_network"
+returns = true
+
+[effects.SOURCE_PERSONNEL_DB]
+reads = "employee_directory.csv"
+returns = true
+
+[effects.SOURCE_CRYPTO_KEYSTORE]
+reads = "crypto_keys.txt"
+returns = true
+
+[effects.SOURCE_REACTOR_REPORT]
+reads = "reactor_report.txt"
+returns = true
+
+[effects.SINK_PUBLIC_NETWORK]
+writes = "public_network"
+reads_from_args = [0]
+
+[effects.SINK_PERSONNEL_LOG]
+writes = "employee_directory.csv"
+reads_from_args = [0]
+
+[effects.SINK_CRYPTO_AUDIT]
+writes = "admin_audit.log"
+reads_from_args = [0]

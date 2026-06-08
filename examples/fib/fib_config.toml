@@ -1,0 +1,20 @@
+[model]
+names = ["Bell-LaPadula"]
+
+[levels]
+order = ["Public", "Secret"]
+
+[categories]
+sets = []
+
+[objects]
+"stdin" = { level = "Public", categories = [] }
+"stdout" = { level = "Public", categories = [] }
+
+[effects]
+"scanf" = { reads = "stdin" }
+"printf" = { writes = "stdout" }
+
+# This example treats user-entered input and terminal output as Public.
+# Later, scanf should be modeled as writing its input label into pointer
+# arguments, not just returning an effect label.

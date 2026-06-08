@@ -7,36 +7,52 @@ order = ["Untrusted", "Low Integrity", "Medium Integrity", "High Integrity", "Tr
 [categories]
 sets = ["Sensor", "Audit", "Control", "Config"]
 
-[subjects]
-"guest" = { integrity = "Untrusted", categories = [] }
-"sensor_agent" = { integrity = "Low Integrity", categories = ["Sensor"] }
-"operator" = { integrity = "Medium Integrity", categories = ["Control"] }
-"auditor" = { integrity = "High Integrity", categories = ["Audit"] }
-"admin" = { integrity = "Trusted", categories = ["Sensor", "Audit", "Control", "Config"] }
-
 [objects]
-"public_upload.txt" = { integrity = "Untrusted", categories = [] }
+"stdin" = { integrity = "Untrusted", categories = [] }
+"stdout" = { integrity = "Untrusted", categories = [] }
+"public_upload" = { integrity = "Untrusted", categories = [] }
 "sensor_readings.csv" = { integrity = "Low Integrity", categories = ["Sensor"] }
 "operator_notes.txt" = { integrity = "Medium Integrity", categories = ["Control"] }
 "audit_log.txt" = { integrity = "High Integrity", categories = ["Audit"] }
 "system_config.toml" = { integrity = "Trusted", categories = ["Config"] }
 "control_plan.txt" = { integrity = "High Integrity", categories = ["Control", "Config"] }
 
-# Optional future analyzer annotations:
-#
-# These are not part of the core Biba policy. They would map
-# LLVM/program behavior onto the subjects and objects above.
-#
-# Possible design 1: direct function labels.
-# [functions]
-# "SOURCE_PUBLIC_UPLOAD" = { returns = { integrity = "Untrusted", categories = [] } }
-# "SINK_SYSTEM_CONFIG" = { accepts = { integrity = "Trusted", categories = ["Config"] } }
-#
-# Possible design 2: function-to-object mapping.
-# [functions]
-# "SOURCE_SENSOR_READINGS" = { reads = "sensor_readings.csv" }
-# "SINK_AUDIT_LOG" = { writes = "audit_log.txt" }
-#
-# Possible design 3: optional seed labels for SSA variables or parameters.
-# [variables]
-# "%operator_command" = { integrity = "Medium Integrity", categories = ["Control"] }
+[effects.SOURCE]
+reads = "public_upload"
+returns = true
+
+[effects.SINK]
+writes = "system_config.toml"
+reads_from_args = [0]
+
+[effects.scanf]
+reads = "stdin"
+writes_to_args = [1]
+
+[effects.printf]
+writes = "stdout"
+reads_from_args = [1, 2]
+
+[effects.SOURCE_PUBLIC_UPLOAD]
+reads = "public_upload"
+returns = true
+
+[effects.SOURCE_SENSOR_READINGS]
+reads = "sensor_readings.csv"
+returns = true
+
+[effects.SOURCE_OPERATOR_NOTES]
+reads = "operator_notes.txt"
+returns = true
+
+[effects.SINK_AUDIT_LOG]
+writes = "audit_log.txt"
+reads_from_args = [0]
+
+[effects.SINK_SYSTEM_CONFIG]
+writes = "system_config.toml"
+reads_from_args = [0]
+
+[effects.SINK_CONTROL_PLAN]
+writes = "control_plan.txt"
+reads_from_args = [0]

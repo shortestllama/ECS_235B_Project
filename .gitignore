@@ -1,2 +1,4 @@
 *.o
 analyzer
+examples/fib/fib
+examples/fib/fib.ll

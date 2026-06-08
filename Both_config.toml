@@ -13,37 +13,19 @@ sets = ["Nuclear", "Crypto", "Personnel"]
 [integrity_categories]
 sets = ["Sensor", "Audit", "Control", "Config"]
 
-[subjects.guest]
-clearance = "Unclassified"
+[objects."stdin"]
+classification = "Unclassified"
 integrity = "Untrusted"
 confidentiality_categories = []
 integrity_categories = []
 
-[subjects.intern]
-clearance = "Confidential"
-integrity = "Low Integrity"
-confidentiality_categories = ["Personnel"]
+[objects."stdout"]
+classification = "Unclassified"
+integrity = "Untrusted"
+confidentiality_categories = []
 integrity_categories = []
 
-[subjects.analyst]
-clearance = "Secret"
-integrity = "Medium Integrity"
-confidentiality_categories = ["Crypto"]
-integrity_categories = ["Audit"]
-
-[subjects.operator]
-clearance = "Secret"
-integrity = "High Integrity"
-confidentiality_categories = ["Nuclear"]
-integrity_categories = ["Sensor", "Control"]
-
-[subjects.admin]
-clearance = "Top Secret"
-integrity = "Trusted"
-confidentiality_categories = ["Nuclear", "Crypto", "Personnel"]
-integrity_categories = ["Sensor", "Audit", "Control", "Config"]
-
-[objects."public_status.txt"]
+[objects."public_network"]
 classification = "Unclassified"
 integrity = "Low Integrity"
 confidentiality_categories = []
@@ -79,32 +61,62 @@ integrity = "Medium Integrity"
 confidentiality_categories = []
 integrity_categories = ["Control", "Audit"]
 
-# Optional future analyzer annotations:
-#
-# These are not part of the core combined policy. They would map
-# LLVM/program behavior onto the subjects and objects above.
-#
-# Possible design 1: direct function labels.
-# [functions.SOURCE_CRYPTO_KEYSTORE.returns]
-# classification = "Top Secret"
-# integrity = "Trusted"
-# confidentiality_categories = ["Crypto"]
-# integrity_categories = ["Config"]
-#
-# [functions.SINK_PUBLIC_NETWORK.accepts]
-# classification = "Unclassified"
-# integrity = "Low Integrity"
-# confidentiality_categories = []
-# integrity_categories = []
-#
-# Possible design 2: function-to-object mapping.
-# [functions]
-# "SOURCE_CRYPTO_KEYSTORE" = { reads = "crypto_keys.txt" }
-# "SINK_OPERATOR_LOG" = { writes = "operator_command.log" }
-#
-# Possible design 3: optional seed labels for SSA variables or parameters.
-# [variables."%session_key"]
-# classification = "Top Secret"
-# integrity = "Trusted"
-# confidentiality_categories = ["Crypto"]
-# integrity_categories = ["Config"]
+[objects."public_upload"]
+classification = "Unclassified"
+integrity = "Untrusted"
+confidentiality_categories = []
+integrity_categories = []
+
+[objects."system_config.toml"]
+classification = "Secret"
+integrity = "Trusted"
+confidentiality_categories = []
+integrity_categories = ["Config"]
+
+[effects.SOURCE]
+reads = "crypto_keys.txt"
+returns = true
+
+[effects.SINK]
+writes = "public_network"
+reads_from_args = [0]
+
+[effects.scanf]
+reads = "stdin"
+writes_to_args = [1]
+
+[effects.printf]
+writes = "stdout"
+reads_from_args = [1, 2]
+
+[effects.SOURCE_PUBLIC_NETWORK]
+reads = "public_network"
+returns = true
+
+[effects.SOURCE_PUBLIC_UPLOAD]
+reads = "public_upload"
+returns = true
+
+[effects.SOURCE_PERSONNEL_DB]
+reads = "employee_directory.csv"
+returns = true
+
+[effects.SOURCE_CRYPTO_KEYSTORE]
+reads = "crypto_keys.txt"
+returns = true
+
+[effects.SOURCE_REACTOR_REPORT]
+reads = "reactor_report.txt"
+returns = true
+
+[effects.SINK_PUBLIC_NETWORK]
+writes = "public_network"
+reads_from_args = [0]
+
+[effects.SINK_AUDIT_LOG]
+writes = "operator_command.log"
+reads_from_args = [0]
+
+[effects.SINK_SYSTEM_CONFIG]
+writes = "system_config.toml"
+reads_from_args = [0]

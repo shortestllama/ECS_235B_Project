@@ -4,16 +4,18 @@
 
 #include "function.hpp"
 #include "CFG.hpp"
+#include "security_policy.hpp"
 
 void print_usage(const char* program) {
     std::cerr << "Usage: " << program << " [options] <file>" << std::endl;
     std::cerr << "Options:" << std::endl;
-    std::cerr << "  -h, --help    Show this help message and exit" << std::endl;
-    std::cerr << "  -c, --config  Use a security policy config file" << std::endl;
-    std::cerr << "  -p, --print   Print the CFG of each function" << std::endl;
+    std::cerr << "  -h, --help      Show this help message and exit" << std::endl;
+    std::cerr << "  -c, --config    Use a security policy config file" << std::endl;
+    std::cerr << "  --print-cfg     Print the CFG of each function" << std::endl;
+    std::cerr << "  --print-policy  Print the parsed security policy" << std::endl;
 }
 
-void enforce_BLP(const Function& fn, bool print_cfg) {
+void process_function(const Function& fn, bool print_cfg) {
     CFG cfg = CFG::build(fn);
 
     if (print_cfg) {
@@ -21,13 +23,8 @@ void enforce_BLP(const Function& fn, bool print_cfg) {
     }
 }
 
-int run(const char* input, const char* config, bool print_cfg) {
-    std::ifstream file(input);
-    if (!file.is_open()) {
-        std::cerr << "Error opening file: " << input << std::endl;
-        return 1;
-    }
-
+int run(const char* input, const char* config, bool print_cfg, bool print_policy) {
+    SecurityPolicy policy = SecurityPolicy::default_policy();
     if (config != nullptr) {
         std::ifstream config_file(config);
         if (!config_file.is_open()) {
@@ -35,17 +32,26 @@ int run(const char* input, const char* config, bool print_cfg) {
             return 1;
         }
 
-        // TODO: Parse the core BLP policy first: levels, categories, subjects, and objects.
-        // Later, decide how LLVM behavior maps onto policy:
-        //   1. direct function labels: SOURCE returns label, SINK accepts label
-        //   2. function-to-object mapping: SOURCE reads object, SINK writes object
-        //   3. optional variable seed labels for external inputs or parameters
+        policy = SecurityPolicy::parse_file(config);
+    }
+
+    if (print_policy) {
+        policy.print(std::cout);
+        if (input == nullptr) {
+            return 0;
+        }
+    }
+
+    std::ifstream file(input);
+    if (!file.is_open()) {
+        std::cerr << "Error opening file: " << input << std::endl;
+        return 1;
     }
 
     std::vector<Function> functions = Function::build_functions(file);
 
     for (const auto& fn : functions) {
-        enforce_BLP(fn, print_cfg);
+        process_function(fn, print_cfg);
     }
 
     return 0;
@@ -53,6 +59,7 @@ int run(const char* input, const char* config, bool print_cfg) {
 
 int main(int argc, char* argv[]) {
     bool print_cfg = false;
+    bool print_policy = false;
     const char* input = nullptr;
     const char* config = nullptr;
 
@@ -69,8 +76,10 @@ int main(int argc, char* argv[]) {
                 return 1;
             }
             config = argv[++i];
-        } else if (arg == "-p" || arg == "--print") {
+        } else if (arg == "--print-cfg") {
             print_cfg = true;
+        } else if (arg == "--print-policy") {
+            print_policy = true;
         } else if (!arg.empty() && arg[0] == '-') {
             std::cerr << "Unknown option: " << arg << "\n";
             print_usage(argv[0]);
@@ -84,11 +93,11 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    if (!input) {
+    if (!input && !print_policy) {
         std::cerr << "No input file specified" << std::endl;
         print_usage(argv[0]);
         return 1;
     }
 
-    return run(input, config, print_cfg);
+    return run(input, config, print_cfg, print_policy);
 }
