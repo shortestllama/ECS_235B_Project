@@ -23,6 +23,8 @@ void analyze_function(const std::string& function_name,
                       bool print_cfg,
                       std::vector<std::string>& findings) {
     if (print_cfg) {
+        std::cout << "----------------------------" << std::endl;
+        std::cout << "Function: " << function_name << std::endl;
         cfg.print();
     }
 
