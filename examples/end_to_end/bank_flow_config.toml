@@ -1,0 +1,29 @@
+[model]
+names = ["Bell-LaPadula"]
+
+[levels]
+order = ["Public", "Secret"]
+
+[categories]
+sets = ["CustomerRisk"]
+
+[objects]
+"public_report" = { level = "Public", categories = [] }
+"secret_risk_db" = { level = "Secret", categories = ["CustomerRisk"] }
+"secret_audit_log" = { level = "Secret", categories = ["CustomerRisk"] }
+
+[effects.SOURCE_PUBLIC]
+reads = "public_report"
+returns = true
+
+[effects.SOURCE_SECRET]
+reads = "secret_risk_db"
+returns = true
+
+[effects.SINK_PUBLIC]
+writes = "public_report"
+reads_from_args = [0]
+
+[effects.SINK_SECRET]
+writes = "secret_audit_log"
+reads_from_args = [0]
