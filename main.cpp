@@ -16,16 +16,21 @@ void print_usage(const char* program) {
     std::cerr << "  --print-policy  Print the parsed security policy" << std::endl;
 }
 
-void analyze_function(const Function& fn, const SecurityPolicy& policy, bool print_cfg) {
-    CFG cfg = CFG::build(fn);
-
+void analyze_function(const std::string& function_name,
+                      const CFG& cfg,
+                      const SecurityPolicy& policy,
+                      const InfoFlowAnalysis::SummaryMap& summaries,
+                      bool print_cfg,
+                      std::vector<std::string>& findings) {
     if (print_cfg) {
         cfg.print();
     }
 
-    InfoFlowAnalysis analysis(cfg, policy);
+    InfoFlowAnalysis analysis(cfg, policy, summaries);
     analysis.run();
-    analysis.print_report();
+    for (const auto& finding : analysis.get_findings()) {
+        findings.push_back("in " + function_name + ": " + finding);
+    }
 }
 
 int run(const char* input, const char* config, bool print_cfg, bool print_policy) {
@@ -54,10 +59,20 @@ int run(const char* input, const char* config, bool print_cfg, bool print_policy
     }
 
     std::vector<Function> functions = Function::build_functions(file);
-
+    std::vector<CFG> cfgs;
+    cfgs.reserve(functions.size());
     for (const auto& fn : functions) {
-        analyze_function(fn, policy, print_cfg);
+        cfgs.push_back(CFG::build(fn));
     }
+
+    InfoFlowAnalysis::SummaryMap summaries = InfoFlowAnalysis::build_summaries(functions, cfgs, policy);
+
+    std::vector<std::string> findings;
+    for (size_t i = 0; i < functions.size() && i < cfgs.size(); ++i) {
+        analyze_function(functions[i].get_name(), cfgs[i], policy, summaries, print_cfg, findings);
+    }
+
+    InfoFlowAnalysis::print_report(std::cout, findings);
 
     return 0;
 }

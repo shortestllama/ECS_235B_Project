@@ -117,6 +117,10 @@ const std::vector<std::string>& Function::get_parameters() const {
     return parameters;
 }
 
+const std::string& Function::get_name() const {
+    return name;
+}
+
 const std::vector<std::string>& Function::get_body() const {
     return body;
 }

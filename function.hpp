@@ -11,6 +11,7 @@ public:
     static std::string parse_name(const std::string& line);
     static std::vector<std::string> parse_parameters(const std::string& line);
     static std::vector<std::string> parse_body(std::ifstream& file);
+    const std::string& get_name() const;
     const std::vector<std::string>& get_parameters() const;
     const std::vector<std::string>& get_body() const;
 private:

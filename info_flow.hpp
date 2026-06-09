@@ -1,18 +1,41 @@
 #ifndef INFO_FLOW_HPP
 #define INFO_FLOW_HPP
 
+#include <optional>
+#include <ostream>
 #include <string>
+#include <set>
 #include <unordered_map>
 #include <vector>
 
 #include "CFG.hpp"
+#include "function.hpp"
 #include "security_policy.hpp"
+
+struct FunctionSummary {
+    std::set<int> return_args;
+    std::optional<InfoFlowFact> return_fact;
+    std::unordered_map<int, std::set<int>> pointer_writes;
+    std::unordered_map<int, InfoFlowFact> pointer_write_facts;
+
+    bool operator==(const FunctionSummary& other) const;
+    bool operator!=(const FunctionSummary& other) const { return !(*this == other); }
+};
 
 class InfoFlowAnalysis {
 public:
+    using SummaryMap = std::unordered_map<std::string, FunctionSummary>;
+
     InfoFlowAnalysis(const CFG& cfg, const SecurityPolicy& policy);
+    InfoFlowAnalysis(const CFG& cfg, const SecurityPolicy& policy, const SummaryMap& summaries);
+    static SummaryMap build_summaries(const std::vector<Function>& functions, const SecurityPolicy& policy);
+    static SummaryMap build_summaries(const std::vector<Function>& functions,
+                                      const std::vector<CFG>& cfgs,
+                                      const SecurityPolicy& policy);
     void run();
+    const std::vector<std::string>& get_findings() const;
     void print_report() const;
+    static void print_report(std::ostream& out, const std::vector<std::string>& findings);
 
 private:
     using FactSet = std::unordered_map<std::string, InfoFlowFact>;
@@ -24,6 +47,7 @@ private:
 
     const CFG& cfg;
     const SecurityPolicy& policy;
+    const SummaryMap& summaries;
     std::vector<AnalysisState> in_states;
     std::vector<std::string> findings;
 
