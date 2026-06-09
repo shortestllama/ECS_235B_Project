@@ -42,6 +42,7 @@ private:
 
     struct AnalysisState {
         FactSet facts;
+        std::unordered_map<unsigned long, InfoFlowFact> pc_contexts;
         InfoFlowFact pc;
     };
 
@@ -56,15 +57,18 @@ private:
     bool join_fact_into(InfoFlowFact& target, const InfoFlowFact& source) const;
 
     InfoFlowFact public_fact() const;
+    InfoFlowFact active_pc(const AnalysisState& state) const;
     InfoFlowFact get_fact(const AnalysisState& state, const std::string& value) const;
     InfoFlowFact object_fact(const std::string& object_name) const;
     InfoFlowFact with_pc(const AnalysisState& state, const InfoFlowFact& fact) const;
 
     void assign_fact(AnalysisState& state, const std::string& dest, const InfoFlowFact& fact) const;
+    void drop_stopping_pc_contexts(AnalysisState& state, unsigned long block_id) const;
     void analyze_instruction(const INode& instr, AnalysisState& state);
     void analyze_call(const CallNode& call, AnalysisState& state);
 
     AnalysisState successor_state(const BasicBlock& block, const AnalysisState& out) const;
+    std::optional<unsigned long> reconvergence_block(unsigned long block_id) const;
 
     void check_write_arg(const CallNode& call,
                          int arg_index,

@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <iostream>
+#include <limits>
 #include <queue>
 #include <set>
 #include <sstream>
@@ -22,6 +23,10 @@ struct DependencyState {
 const SummaryMap& empty_summaries() {
     static const SummaryMap summaries;
     return summaries;
+}
+
+constexpr unsigned long no_reconvergence_block() {
+    return std::numeric_limits<unsigned long>::max();
 }
 
 bool merge_dependencies(DependencySet& target, const DependencySet& source) {
@@ -444,7 +449,7 @@ bool InfoFlowAnalysis::join_fact_into(InfoFlowFact& target, const InfoFlowFact& 
 }
 
 bool InfoFlowAnalysis::join_into(AnalysisState& target, const AnalysisState& source) const {
-    bool changed = join_fact_into(target.pc, source.pc);
+    bool changed = false;
 
     for (const auto& [var, fact] : source.facts) {
         auto it = target.facts.find(var);
@@ -456,11 +461,30 @@ bool InfoFlowAnalysis::join_into(AnalysisState& target, const AnalysisState& sou
         }
     }
 
+    for (const auto& [stop_block, pc] : source.pc_contexts) {
+        auto it = target.pc_contexts.find(stop_block);
+        if (it == target.pc_contexts.end()) {
+            target.pc_contexts[stop_block] = pc;
+            changed = true;
+        } else if (join_fact_into(it->second, pc)) {
+            changed = true;
+        }
+    }
+
     return changed;
 }
 
 InfoFlowFact InfoFlowAnalysis::public_fact() const {
     return policy.public_input_fact();
+}
+
+InfoFlowFact InfoFlowAnalysis::active_pc(const AnalysisState& state) const {
+    InfoFlowFact pc = public_fact();
+    for (const auto& [stop_block, context] : state.pc_contexts) {
+        (void)stop_block;
+        pc = InfoFlowFact::join(pc, context);
+    }
+    return pc;
 }
 
 InfoFlowFact InfoFlowAnalysis::get_fact(const AnalysisState& state, const std::string& value) const {
@@ -487,6 +511,11 @@ void InfoFlowAnalysis::assign_fact(AnalysisState& state, const std::string& dest
     if (!dest.empty() && dest[0] == '%') {
         state.facts[dest] = with_pc(state, fact);
     }
+}
+
+void InfoFlowAnalysis::drop_stopping_pc_contexts(AnalysisState& state, unsigned long block_id) const {
+    state.pc_contexts.erase(block_id);
+    state.pc = active_pc(state);
 }
 
 void InfoFlowAnalysis::analyze_instruction(const INode& instr, AnalysisState& state) {
@@ -615,15 +644,143 @@ InfoFlowAnalysis::AnalysisState InfoFlowAnalysis::successor_state(const BasicBlo
 
     if (const auto& term = block.get_term()) {
         if (!term->get_condition().empty()) {
-            next.pc = InfoFlowFact::join(next.pc, get_fact(out, term->get_condition()));
+            unsigned long stop = reconvergence_block(block.get_id()).value_or(no_reconvergence_block());
+            InfoFlowFact condition = with_pc(out, get_fact(out, term->get_condition()));
+            auto it = next.pc_contexts.find(stop);
+            if (it == next.pc_contexts.end()) {
+                next.pc_contexts[stop] = condition;
+            } else {
+                InfoFlowFact joined = InfoFlowFact::join(it->second, condition);
+                it->second = joined;
+            }
+            next.pc = active_pc(next);
         }
     } else if (!block.get_instructions().empty()) {
         if (const auto* node = dynamic_cast<const SwitchNode*>(block.get_instructions().back().get())) {
-            next.pc = InfoFlowFact::join(next.pc, get_fact(out, node->get_condition()));
+            unsigned long stop = reconvergence_block(block.get_id()).value_or(no_reconvergence_block());
+            InfoFlowFact condition = with_pc(out, get_fact(out, node->get_condition()));
+            auto it = next.pc_contexts.find(stop);
+            if (it == next.pc_contexts.end()) {
+                next.pc_contexts[stop] = condition;
+            } else {
+                InfoFlowFact joined = InfoFlowFact::join(it->second, condition);
+                it->second = joined;
+            }
+            next.pc = active_pc(next);
         }
     }
 
     return next;
+}
+
+std::optional<unsigned long> InfoFlowAnalysis::reconvergence_block(unsigned long block_id) const {
+    const auto& blocks = cfg.get_blocks();
+    if (block_id >= blocks.size() || blocks[block_id].get_successors().size() < 2) {
+        return std::nullopt;
+    }
+
+    const size_t n = blocks.size();
+    std::vector<std::set<unsigned long>> postdoms(n);
+    std::set<unsigned long> all_blocks;
+    for (size_t i = 0; i < n; ++i) {
+        all_blocks.insert(static_cast<unsigned long>(i));
+    }
+
+    for (size_t i = 0; i < n; ++i) {
+        if (blocks[i].get_successors().empty()) {
+            postdoms[i] = {static_cast<unsigned long>(i)};
+        } else {
+            postdoms[i] = all_blocks;
+        }
+    }
+
+    bool changed = true;
+    while (changed) {
+        changed = false;
+        for (size_t i = 0; i < n; ++i) {
+            const auto& successors = blocks[i].get_successors();
+            if (successors.empty()) {
+                continue;
+            }
+
+            std::set<unsigned long> next = all_blocks;
+            for (unsigned long succ : successors) {
+                if (succ >= postdoms.size()) {
+                    continue;
+                }
+                std::set<unsigned long> intersection;
+                std::set_intersection(next.begin(), next.end(),
+                                      postdoms[succ].begin(), postdoms[succ].end(),
+                                      std::inserter(intersection, intersection.begin()));
+                next = intersection;
+            }
+            next.insert(static_cast<unsigned long>(i));
+
+            if (next != postdoms[i]) {
+                postdoms[i] = next;
+                changed = true;
+            }
+        }
+    }
+
+    std::set<unsigned long> candidates = all_blocks;
+    for (unsigned long succ : blocks[block_id].get_successors()) {
+        if (succ >= postdoms.size()) {
+            continue;
+        }
+        std::set<unsigned long> intersection;
+        std::set_intersection(candidates.begin(), candidates.end(),
+                              postdoms[succ].begin(), postdoms[succ].end(),
+                              std::inserter(intersection, intersection.begin()));
+        candidates = intersection;
+    }
+    candidates.erase(block_id);
+    if (candidates.empty()) {
+        return std::nullopt;
+    }
+
+    std::vector<std::vector<unsigned long>> distances;
+    for (unsigned long succ : blocks[block_id].get_successors()) {
+        std::vector<unsigned long> dist(n, no_reconvergence_block());
+        if (succ >= n) {
+            distances.push_back(dist);
+            continue;
+        }
+        std::queue<unsigned long> queue;
+        dist[succ] = 0;
+        queue.push(succ);
+        while (!queue.empty()) {
+            unsigned long current = queue.front();
+            queue.pop();
+            for (unsigned long next : blocks[current].get_successors()) {
+                if (next < n && dist[next] == no_reconvergence_block()) {
+                    dist[next] = dist[current] + 1;
+                    queue.push(next);
+                }
+            }
+        }
+        distances.push_back(dist);
+    }
+
+    std::optional<unsigned long> best;
+    unsigned long best_distance = no_reconvergence_block();
+    for (unsigned long candidate : candidates) {
+        unsigned long total = 0;
+        bool reachable = true;
+        for (const auto& dist : distances) {
+            if (candidate >= dist.size() || dist[candidate] == no_reconvergence_block()) {
+                reachable = false;
+                break;
+            }
+            total += dist[candidate];
+        }
+        if (reachable && total < best_distance) {
+            best = candidate;
+            best_distance = total;
+        }
+    }
+
+    return best;
 }
 
 void InfoFlowAnalysis::check_write_arg(const CallNode& call,
@@ -695,8 +852,20 @@ void InfoFlowAnalysis::run() {
         queued[id] = false;
 
         AnalysisState out = in_states[id];
+        out.pc = active_pc(out);
+        bool dropped_stopping_contexts = false;
         for (const auto& instr : cfg.get_blocks()[id].get_instructions()) {
+            if (!dropped_stopping_contexts
+                && dynamic_cast<const LabelNode*>(instr.get()) == nullptr
+                && dynamic_cast<const PhiNode*>(instr.get()) == nullptr) {
+                drop_stopping_pc_contexts(out, id);
+                dropped_stopping_contexts = true;
+            }
             analyze_instruction(*instr, out);
+        }
+
+        if (!dropped_stopping_contexts) {
+            drop_stopping_pc_contexts(out, id);
         }
 
         AnalysisState next = successor_state(cfg.get_blocks()[id], out);
